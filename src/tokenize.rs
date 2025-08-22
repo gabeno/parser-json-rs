@@ -27,3 +27,7 @@ pub enum Token {
     /// Key of a key/value pair or String
     String(String),
 }
+
+pub fn tokenize(input: String) -> Vec<Token> {
+    Vec::new()
+}
