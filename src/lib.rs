@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 /// Representation of a JSON [value](https://www.rfc-editor.org/rfc/rfc8259#section-3)
-enum Value {
+pub enum Value {
     /// literal characters `null`
     Null,
 
