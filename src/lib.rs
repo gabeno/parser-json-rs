@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+mod tokenize;
+
 /// Representation of a JSON [value](https://www.rfc-editor.org/rfc/rfc8259#section-3)
 pub enum Value {
     /// literal characters `null`
