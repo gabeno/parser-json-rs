@@ -1,5 +1,7 @@
 // REference for possible tokens https://www.json.org/json-en.html
 
+use regex::Regex;
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     // punctuation tokens
@@ -30,7 +32,8 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq)]
-enum TokenizeError {
+pub enum TokenizeError {
+    UnrecognizedToken,
     UnfinishedLiteralValue,
 }
 
@@ -40,7 +43,7 @@ pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
     let mut tokens: Vec<Token> = Vec::new();
 
     while index < chars.len() {
-        let token = make_token(&chars, &mut index)?;
+        let token = make_token(&chars, &mut index, &input)?;
         tokens.push(token);
         index += 1
     }
@@ -48,7 +51,7 @@ pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
     Ok(tokens)
 }
 
-fn make_token(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError> {
+fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, TokenizeError> {
     let ch = chars[*index];
     match ch {
         '{' => Ok(Token::LeftCurlyBracket),
@@ -58,44 +61,26 @@ fn make_token(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError>
         ':' => Ok(Token::Colon),
         ',' => Ok(Token::Comma),
 
-        'n' => tokenize_literal(chars, index, Token::Null, String::from("null")),
-        't' => tokenize_literal(chars, index, Token::True, String::from("true")),
-        'f' => tokenize_literal(chars, index, Token::False, String::from("false")),
+        'n' => tokenize_literal(index, Token::Null, input),
+        't' => tokenize_literal(index, Token::True, input),
+        'f' => tokenize_literal(index, Token::False, input),
 
-        // others
-        _ => todo!("implement other tokens"),
+        _ => Err(TokenizeError::UnrecognizedToken),
     }
 }
 
-fn tokenize_null(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError> {
-    for expected_char in "null".chars() {
-        if expected_char != chars[*index] {
-            return Err(TokenizeError::UnfinishedLiteralValue);
-        }
-        *index += 1
-    }
-    Ok(Token::Null)
-}
-
-fn tokenize_literal(
-    chars: &[char],
-    index: &mut usize,
-    token: Token,
-    token_str: String,
-) -> Result<Token, TokenizeError> {
-    for expected_char in token_str.chars() {
-        if expected_char != chars[*index] {
-            return Err(TokenizeError::UnfinishedLiteralValue);
-        }
-        *index += 1
-    }
+fn tokenize_literal(index: &mut usize, token: Token, input: &str) -> Result<Token, TokenizeError> {
+    let re = Regex::new(r"(?<name>null|false|true)").unwrap();
+    let Some(captures) = re.captures(input) else {
+        return Err(TokenizeError::UnfinishedLiteralValue);
+    };
+    println!("{:?}", &captures["name"]);
+    *index += &captures["name"].len() - 1;
     Ok(token)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tokenize::TokenizeError;
-
     use super::{Token, tokenize};
 
     #[test]
@@ -117,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_broken_literal_tokens_return_error() {
-        let bad_null = String::from("nolll");
+        let bad_null = String::from("nulll");
         assert!(tokenize(bad_null).is_err());
     }
 
