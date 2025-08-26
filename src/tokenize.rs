@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_punctuation_literals() {
-        let comma = String::from(",{}[]:");
+        let input = String::from(",{}[]:");
         let expected = vec![
             Token::Comma,
             Token::LeftCurlyBracket,
@@ -95,7 +95,7 @@ mod tests {
             Token::Colon,
         ];
 
-        let actual = tokenize(comma).unwrap();
+        let actual = tokenize(input).unwrap();
 
         assert_eq!(expected, actual);
     }
