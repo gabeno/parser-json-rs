@@ -106,6 +106,16 @@ mod tests {
         assert!(tokenize(bad_null).is_err());
     }
 
+    #[test]
+    fn test_true_comma() {
+        let input = String::from("true,");
+        let expected = vec![Token::True, Token::Comma];
+
+        let actual = tokenize(input).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
     macro_rules! test_literal_tokens {
         ($name:ident, $token_name:expr, $expected:expr) => {
             #[test]
