@@ -86,39 +86,12 @@ mod tests {
     use super::{Token, tokenize};
 
     #[test]
-    fn test_tokenize_punctuation_literals() {
-        let input = String::from(",{}[]:");
-        let expected = vec![
-            Token::Comma,
-            Token::LeftCurlyBracket,
-            Token::RightCurlyBracket,
-            Token::LeftSquareBracket,
-            Token::RightSquareBracket,
-            Token::Colon,
-        ];
-
-        let actual = tokenize(input).unwrap();
-
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
     fn test_broken_literal_tokens_return_error() {
         let bad_null = String::from("nolll");
         assert!(tokenize(bad_null).is_err());
     }
 
-    #[test]
-    fn test_true_comma() {
-        let input = String::from("true,");
-        let expected = vec![Token::True, Token::Comma];
-
-        let actual = tokenize(input).unwrap();
-
-        assert_eq!(expected, actual);
-    }
-
-    macro_rules! test_literal_tokens {
+    macro_rules! test_tokens {
         ($name:ident, $token_name:expr, $expected:expr) => {
             #[test]
             fn $name() {
@@ -126,7 +99,24 @@ mod tests {
             }
         };
     }
-    test_literal_tokens!(test_null, String::from("null"), vec![Token::Null]);
-    test_literal_tokens!(test_false, String::from("false"), vec![Token::False]);
-    test_literal_tokens!(test_true, String::from("true"), vec![Token::True]);
+    test_tokens!(
+        test_punctuation_literals,
+        String::from(",{}[]:"),
+        vec![
+            Token::Comma,
+            Token::LeftCurlyBracket,
+            Token::RightCurlyBracket,
+            Token::LeftSquareBracket,
+            Token::RightSquareBracket,
+            Token::Colon,
+        ]
+    );
+    test_tokens!(test_null, String::from("null"), vec![Token::Null]);
+    test_tokens!(test_false, String::from("false"), vec![Token::False]);
+    test_tokens!(test_true, String::from("true"), vec![Token::True]);
+    test_tokens!(
+        test_true_comma,
+        String::from("true,"),
+        vec![Token::True, Token::Comma]
+    );
 }
