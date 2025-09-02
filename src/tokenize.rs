@@ -53,20 +53,22 @@ pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
 
 fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, TokenizeError> {
     let ch = chars[*index];
-    match ch {
-        '{' => Ok(Token::LeftCurlyBracket),
-        '}' => Ok(Token::RightCurlyBracket),
-        '[' => Ok(Token::LeftSquareBracket),
-        ']' => Ok(Token::RightSquareBracket),
-        ':' => Ok(Token::Colon),
-        ',' => Ok(Token::Comma),
+    let token = match ch {
+        '{' => Token::LeftCurlyBracket,
+        '}' => Token::RightCurlyBracket,
+        '[' => Token::LeftSquareBracket,
+        ']' => Token::RightSquareBracket,
+        ':' => Token::Colon,
+        ',' => Token::Comma,
 
-        'n' => tokenize_literal(index, Token::Null, input),
-        't' => tokenize_literal(index, Token::True, input),
-        'f' => tokenize_literal(index, Token::False, input),
+        'n' => tokenize_literal(index, Token::Null, input)?,
+        't' => tokenize_literal(index, Token::True, input)?,
+        'f' => tokenize_literal(index, Token::False, input)?,
 
-        _ => Err(TokenizeError::UnrecognizedToken),
-    }
+        _ => todo!("implement for other"),
+    };
+
+    Ok(token)
 }
 
 fn tokenize_literal(index: &mut usize, token: Token, input: &str) -> Result<Token, TokenizeError> {
@@ -74,7 +76,7 @@ fn tokenize_literal(index: &mut usize, token: Token, input: &str) -> Result<Toke
     let Some(captures) = re.captures(input) else {
         return Err(TokenizeError::UnfinishedLiteralValue);
     };
-    println!("{:?}", &captures["name"]);
+    println!(">>> {:?}", &captures["name"]);
     *index += &captures["name"].len() - 1;
     Ok(token)
 }
@@ -102,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_broken_literal_tokens_return_error() {
-        let bad_null = String::from("nulll");
+        let bad_null = String::from("nolll");
         assert!(tokenize(bad_null).is_err());
     }
 
