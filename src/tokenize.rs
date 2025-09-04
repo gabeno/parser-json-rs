@@ -1,5 +1,7 @@
 // REference for possible tokens https://www.json.org/json-en.html
 
+use std::num::ParseFloatError;
+
 use regex::Regex;
 
 #[derive(Debug, PartialEq)]
@@ -35,6 +37,7 @@ pub enum Token {
 pub enum TokenizeError {
     UnrecognizedToken,
     UnfinishedLiteralValue,
+    ParseNumberError(ParseFloatError),
 }
 
 pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
@@ -65,6 +68,8 @@ fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, T
         't' => tokenize_literal(index, Token::True, input)?,
         'f' => tokenize_literal(index, Token::False, input)?,
 
+        ch if ch.is_ascii_digit() => tokenize_float(chars, index)?,
+
         _ => todo!("implement for other"),
     };
 
@@ -79,6 +84,29 @@ fn tokenize_literal(index: &mut usize, token: Token, input: &str) -> Result<Toke
     println!(">>> {:?}", &captures["name"]);
     *index += &captures["name"].len() - 1;
     Ok(token)
+}
+
+fn tokenize_float(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError> {
+    let mut unparsed_num = String::new();
+    let mut has_decimal = false;
+
+    while *index < chars.len() {
+        let ch = chars[*index];
+        match ch {
+            ch if ch.is_ascii_digit() => unparsed_num.push(ch),
+            ch if ch == '.' && !has_decimal => {
+                unparsed_num.push('.');
+                has_decimal = true;
+            }
+            _ => break,
+        }
+        *index += 1;
+    }
+
+    match unparsed_num.parse() {
+        Ok(f) => Ok(Token::Number(f)),
+        Err(err) => Err(TokenizeError::ParseNumberError(err)),
+    }
 }
 
 #[cfg(test)]
@@ -118,5 +146,15 @@ mod tests {
         test_true_comma,
         String::from("true,"),
         vec![Token::True, Token::Comma]
+    );
+    test_tokens!(
+        test_integer,
+        String::from("123"),
+        vec![Token::Number(123.0)]
+    );
+    test_tokens!(
+        test_float,
+        String::from("123.9"),
+        vec![Token::Number(123.9)]
     );
 }
