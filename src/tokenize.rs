@@ -68,7 +68,9 @@ fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, T
         't' => tokenize_literal(index, Token::True, input)?,
         'f' => tokenize_literal(index, Token::False, input)?,
 
-        ch if ch.is_ascii_digit() => tokenize_float(chars, index)?,
+        ch if ch.is_ascii_digit() | (ch == '-' && chars[*index + 1].is_ascii_digit()) => {
+            tokenize_float(chars, index)?
+        }
 
         _ => todo!("implement for other"),
     };
@@ -89,6 +91,7 @@ fn tokenize_literal(index: &mut usize, token: Token, input: &str) -> Result<Toke
 fn tokenize_float(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError> {
     let mut unparsed_num = String::new();
     let mut has_decimal = false;
+    let mut is_negative = false;
 
     while *index < chars.len() {
         let ch = chars[*index];
@@ -98,13 +101,20 @@ fn tokenize_float(chars: &[char], index: &mut usize) -> Result<Token, TokenizeEr
                 unparsed_num.push('.');
                 has_decimal = true;
             }
+            ch if ch == '-' => is_negative = true,
             _ => break,
         }
         *index += 1;
     }
 
     match unparsed_num.parse() {
-        Ok(f) => Ok(Token::Number(f)),
+        Ok(f) => {
+            if is_negative {
+                Ok(Token::Number(-1.0 * f))
+            } else {
+                Ok(Token::Number(f))
+            }
+        }
         Err(err) => Err(TokenizeError::ParseNumberError(err)),
     }
 }
@@ -156,5 +166,10 @@ mod tests {
         test_float,
         String::from("123.9"),
         vec![Token::Number(123.9)]
+    );
+    test_tokens!(
+        test_negative_float,
+        String::from("-123.9"),
+        vec![Token::Number(-123.9)]
     );
 }
