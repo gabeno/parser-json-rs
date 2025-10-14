@@ -39,6 +39,8 @@ pub enum TokenizeError {
     UnfinishedLiteralValue,
     ParseNumberError(ParseFloatError),
     UnclosedQuotes,
+    UnexpectedEof,
+    CharNotRecognized(char),
 }
 
 pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
@@ -56,7 +58,14 @@ pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
 }
 
 fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, TokenizeError> {
-    let ch = chars[*index];
+    let mut ch = chars[*index];
+    while ch.is_ascii_whitespace() {
+        *index += 1;
+        if *index >= chars.len() {
+            return Err(TokenizeError::UnexpectedEof);
+        }
+        ch = chars[*index];
+    }
     let token = match ch {
         '{' => Token::LeftCurlyBracket,
         '}' => Token::RightCurlyBracket,
@@ -72,7 +81,7 @@ fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, T
         }
         '"' => tokenize_string(chars, index)?,
 
-        _ => todo!("implement for other"),
+        ch => return Err(TokenizeError::CharNotRecognized(ch)),
     };
 
     Ok(token)
