@@ -38,6 +38,7 @@ pub enum TokenizeError {
     UnrecognizedToken,
     UnfinishedLiteralValue,
     ParseNumberError(ParseFloatError),
+    UnclosedQuotes,
 }
 
 pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
@@ -63,14 +64,13 @@ fn make_token(chars: &[char], index: &mut usize, input: &str) -> Result<Token, T
         ']' => Token::RightSquareBracket,
         ':' => Token::Colon,
         ',' => Token::Comma,
-
         'n' => tokenize_literal(index, Token::Null, input)?,
         't' => tokenize_literal(index, Token::True, input)?,
         'f' => tokenize_literal(index, Token::False, input)?,
-
         ch if ch.is_ascii_digit() | (ch == '-' && chars[*index + 1].is_ascii_digit()) => {
             tokenize_float(chars, index)?
         }
+        '"' => tokenize_string(chars, index)?,
 
         _ => todo!("implement for other"),
     };
@@ -117,6 +117,29 @@ fn tokenize_float(chars: &[char], index: &mut usize) -> Result<Token, TokenizeEr
         }
         Err(err) => Err(TokenizeError::ParseNumberError(err)),
     }
+}
+
+fn tokenize_string(chars: &[char], index: &mut usize) -> Result<Token, TokenizeError> {
+    let mut string = String::new();
+    let mut is_escaping = false;
+
+    loop {
+        *index += 1;
+        if *index >= chars.len() {
+            return Err(TokenizeError::UnclosedQuotes);
+        }
+
+        let ch = chars[*index];
+        match ch {
+            '"' if !is_escaping => break,
+            '\\' => is_escaping = !is_escaping,
+            _ => is_escaping = false,
+        }
+
+        string.push(ch);
+    }
+
+    Ok(Token::String(string))
 }
 
 #[cfg(test)]
@@ -171,5 +194,10 @@ mod tests {
         test_negative_float,
         String::from("-123.9"),
         vec![Token::Number(-123.9)]
+    );
+    test_tokens!(
+        test_string,
+        String::from("\"gabe\""),
+        vec![Token::String(String::from("gabe"))]
     );
 }
