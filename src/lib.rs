@@ -1,8 +1,10 @@
-use std::collections::HashMap;
-
+mod parser;
 mod tokenize;
 
+use std::collections::HashMap;
+
 /// Representation of a JSON [value](https://www.rfc-editor.org/rfc/rfc8259#section-3)
+#[derive(Debug, PartialEq)]
 pub enum Value {
     /// literal characters `null`
     Null,
