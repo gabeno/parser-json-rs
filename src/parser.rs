@@ -24,7 +24,18 @@ fn parse_string(s: &str) -> ParseResult {
 
     while let Some(next_char) = chars.next() {
         if is_escaping {
-            todo!();
+            match next_char {
+                '"' => output.push('"'),
+                '\\' => output.push('\\'),
+                'b' => output.push('\u{8}'),
+                'f' => output.push('\u{12}'),
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                'u' => todo!("Implement hex code escapes"),
+                // any other character *may* be escaped, ex. `\q` just push that letter `q`
+                _ => output.push(next_char),
+            }
             is_escaping = true;
         } else if next_char == '\\' {
             is_escaping = true;
@@ -103,6 +114,14 @@ mod tests {
     fn parse_string_with_emoji() {
         let input = [Token::String("hello 💩 world".into())];
         let expected = Value::String("hello 💩 world".into());
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_string_unescape_backslash() {
+        let input = [Token::String(r#"hello\\world"#.into())];
+        let expected = Value::String(r#"hello\world"#.into());
 
         check(&input, expected);
     }
