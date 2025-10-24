@@ -29,10 +29,22 @@ fn parse_string(s: &str) -> ParseResult {
                 '\\' => output.push('\\'),
                 'b' => output.push('\u{8}'),
                 'f' => output.push('\u{12}'),
-                'n' => output.push('\n'),
-                'r' => output.push('\r'),
-                't' => output.push('\t'),
-                'u' => todo!("Implement hex code escapes"),
+                '\n' => output.push('\n'),
+                '\r' => output.push('\r'),
+                '\t' => output.push('\t'),
+                'u' => {
+                    let mut sum = 0;
+                    for i in 0..4 {
+                        let next_char = chars.next().ok_or(TokenParseError::UnfinishedEscape)?;
+                        let digit = next_char
+                            .to_digit(16)
+                            .ok_or(TokenParseError::InvalidHexValue)?;
+                        sum += (16u32).pow(3 - i) * digit;
+                    }
+                    let unescape_char =
+                        char::from_u32(sum).ok_or(TokenParseError::InvalidCodePointValue)?;
+                    output.push(unescape_char);
+                }
                 // any other character *may* be escaped, ex. `\q` just push that letter `q`
                 _ => output.push(next_char),
             }
@@ -48,7 +60,11 @@ fn parse_string(s: &str) -> ParseResult {
 }
 
 #[derive(Debug, PartialEq)]
-enum TokenParseError {}
+enum TokenParseError {
+    UnfinishedEscape,
+    InvalidHexValue,
+    InvalidCodePointValue,
+}
 
 #[cfg(test)]
 mod tests {
