@@ -12,7 +12,7 @@ fn parse_tokens(tokens: &[Token], index: &mut usize) -> ParseResult {
         Token::Number(number) => Ok(Value::Number(*number)),
         Token::String(string) => parse_string(string),
         Token::RightCurlyBracket => todo!(),
-        Token::LeftSquareBracket => todo!(),
+        Token::LeftSquareBracket => parse_array(tokens, index),
         _ => todo!(),
     }
 }
@@ -59,11 +59,36 @@ fn parse_string(s: &str) -> ParseResult {
     Ok(Value::String(output))
 }
 
+fn parse_array(tokens: &[Token], index: &mut usize) -> ParseResult {
+    let mut arr: Vec<Value> = Vec::new();
+    loop {
+        // consume previous left bracket or comma token
+        *index += 1;
+        if tokens[*index] == Token::RightSquareBracket {
+            break;
+        }
+        let value = parse_tokens(tokens, index)?;
+        arr.push(value);
+
+        *index += 1;
+        let token = &tokens[*index];
+        match token {
+            Token::Comma => {}
+            Token::RightSquareBracket => break,
+            _ => return Err(TokenParseError::ExpectedComma),
+        }
+    }
+    // consume right bracket token
+    *index += 1;
+    Ok(Value::Array(arr))
+}
+
 #[derive(Debug, PartialEq)]
 enum TokenParseError {
     UnfinishedEscape,
     InvalidHexValue,
     InvalidCodePointValue,
+    ExpectedComma,
 }
 
 #[cfg(test)]
@@ -138,6 +163,60 @@ mod tests {
     fn parse_string_unescape_backslash() {
         let input = [Token::String(r#"hello\\world"#.into())];
         let expected = Value::String(r#"hello\world"#.into());
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_array_one_element() {
+        // [true]
+        let input = [
+            Token::LeftSquareBracket,
+            Token::True,
+            Token::RightSquareBracket,
+        ];
+        let expected = Value::Array(vec![Value::Boolean(true)]);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_array_two_elements() {
+        // [null, 16]
+        let input = [
+            Token::LeftSquareBracket,
+            Token::Null,
+            Token::Comma,
+            Token::Number(16.0),
+            Token::RightSquareBracket,
+        ];
+        let expected = Value::Array(vec![Value::Null, Value::Number(16.0)]);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_empty_array() {
+        // []
+        let input = [Token::LeftSquareBracket, Token::RightSquareBracket];
+        let expected = Value::Array(vec![]);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_nested_array() {
+        // [null, [null]]
+        let input = [
+            Token::LeftSquareBracket,
+            Token::Null,
+            Token::Comma,
+            Token::LeftSquareBracket,
+            Token::Null,
+            Token::RightSquareBracket,
+            Token::RightSquareBracket,
+        ];
+        let expected = Value::Array(vec![Value::Null, Value::Array(vec![Value::Null])]);
 
         check(&input, expected);
     }
