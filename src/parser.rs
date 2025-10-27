@@ -5,6 +5,12 @@ type ParseResult = Result<Value, TokenParseError>;
 
 fn parse_tokens(tokens: &[Token], index: &mut usize) -> ParseResult {
     let token = &tokens[*index];
+    if matches!(
+        token,
+        Token::Null | Token::False | Token::True | Token::Number(_) | Token::String(_)
+    ) {
+        *index += 1
+    }
     match token {
         Token::Null => Ok(Value::Null),
         Token::False => Ok(Value::Boolean(false)),
@@ -70,7 +76,6 @@ fn parse_array(tokens: &[Token], index: &mut usize) -> ParseResult {
         let value = parse_tokens(tokens, index)?;
         arr.push(value);
 
-        *index += 1;
         let token = &tokens[*index];
         match token {
             Token::Comma => {}
