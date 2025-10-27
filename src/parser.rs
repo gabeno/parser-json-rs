@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::Value;
 use super::tokenize::Token;
 
@@ -17,7 +19,7 @@ fn parse_tokens(tokens: &[Token], index: &mut usize) -> ParseResult {
         Token::True => Ok(Value::Boolean(true)),
         Token::Number(number) => Ok(Value::Number(*number)),
         Token::String(string) => parse_string(string),
-        Token::RightCurlyBracket => todo!(),
+        Token::LeftCurlyBracket => parse_object(tokens, index),
         Token::LeftSquareBracket => parse_array(tokens, index),
         _ => todo!(),
     }
@@ -88,16 +90,53 @@ fn parse_array(tokens: &[Token], index: &mut usize) -> ParseResult {
     Ok(Value::Array(arr))
 }
 
+fn parse_object(tokens: &[Token], index: &mut usize) -> ParseResult {
+    let mut map = HashMap::new();
+    loop {
+        // consume previous left brace or comma
+        *index += 1;
+        if tokens[*index] == Token::RightCurlyBracket {
+            break;
+        }
+        if let Token::String(s) = &tokens[*index] {
+            *index += 1;
+            if tokens[*index] == Token::Colon {
+                *index += 1;
+                let key = s.clone();
+                let value = parse_tokens(tokens, index)?;
+                println!("{:?}", value);
+                map.insert(key, value);
+            } else {
+                return Err(TokenParseError::ExpectedColon);
+            }
+            match &tokens[*index] {
+                Token::Comma => {}
+                Token::RightCurlyBracket => break,
+                _ => return Err(TokenParseError::ExpectedComma),
+            }
+        } else {
+            return Err(TokenParseError::ExpectedProperty);
+        }
+    }
+    // consume right brace
+    *index += 1;
+    Ok(Value::Object(map))
+}
+
 #[derive(Debug, PartialEq)]
 enum TokenParseError {
     UnfinishedEscape,
     InvalidHexValue,
     InvalidCodePointValue,
     ExpectedComma,
+    ExpectedProperty,
+    ExpectedColon,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::{Value, tokenize::Token};
 
     use super::parse_tokens;
@@ -222,6 +261,101 @@ mod tests {
             Token::RightSquareBracket,
         ];
         let expected = Value::Array(vec![Value::Null, Value::Array(vec![Value::Null])]);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_empty_object() {
+        // {}
+        let input = [Token::LeftCurlyBracket, Token::RightCurlyBracket];
+        let expected = Value::Object(HashMap::new());
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_object_one_item() {
+        // {"a": "A"}
+        let mut map = HashMap::new();
+        map.insert(String::from("a"), Value::String(String::from("A")));
+        let input = [
+            Token::LeftCurlyBracket,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::String("A".into()),
+            Token::RightCurlyBracket,
+        ];
+        let expected = Value::Object(map);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_object_two_items() {
+        // {"a": "A", "b": null}
+        let mut map = HashMap::new();
+        map.insert(String::from("a"), Value::String(String::from("A")));
+        map.insert(String::from("b"), Value::Null);
+        let input = [
+            Token::LeftCurlyBracket,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::String("A".into()),
+            Token::Comma,
+            Token::String("b".into()),
+            Token::Colon,
+            Token::Null,
+            Token::RightCurlyBracket,
+        ];
+        let expected = Value::Object(map);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_object_nested_with_array() {
+        // {"a": [null, 6]}
+        let mut map = HashMap::new();
+        map.insert(
+            String::from("a"),
+            Value::Array(vec![Value::Null, Value::Number(6f64)]),
+        );
+        let input = [
+            Token::LeftCurlyBracket,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::LeftSquareBracket,
+            Token::Null,
+            Token::Comma,
+            Token::Number(6f64),
+            Token::RightSquareBracket,
+            Token::RightCurlyBracket,
+        ];
+        let expected = Value::Object(map);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parse_object_nested_with_object() {
+        // {"a": {"b": 6}}
+        let mut map = HashMap::new();
+        let mut inner = HashMap::new();
+        inner.insert(String::from("b"), Value::Number(6f64));
+        map.insert(String::from("a"), Value::Object(inner));
+        let input = [
+            Token::LeftCurlyBracket,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::LeftCurlyBracket,
+            Token::String("b".into()),
+            Token::Colon,
+            Token::Number(6f64),
+            Token::RightCurlyBracket,
+            Token::RightCurlyBracket,
+        ];
+        let expected = Value::Object(map);
 
         check(&input, expected);
     }
